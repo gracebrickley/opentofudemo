@@ -1,0 +1,51 @@
+# Atlantis repository configuration
+# This file defines repository-level settings for Atlantis
+
+repos:
+  - id: /.*/
+    
+    # Allow all commands by default for demo
+    allowed_overrides:
+      - apply_requirements
+      - workflow
+      - delete_source_branch_on_merge
+    
+    allowed_workflows:
+      - terragrunt
+      - opentofu
+    
+    # Enable auto planning
+    allow_custom_workflows: true
+    
+    # Apply requirements
+    apply_requirements:
+      - approved
+      - mergeable
+    
+    # Pre-workflow hooks
+    pre_workflow_hooks:
+      - run: |
+          echo "=== Pre-workflow Hook ==="
+          echo "Project: $PROJECT_NAME"
+          echo "Directory: $DIR"
+          echo "Workspace: $WORKSPACE"
+          
+          # Ensure tenv is available and install correct version
+          if command -v tenv &> /dev/null; then
+            cd $BASE_REPO_DIR
+            if [ -f .tenv.tofu.version ]; then
+              VERSION=$(cat .tenv.tofu.version)
+              echo "Installing OpenTofu version: $VERSION"
+              tenv tofu install $VERSION
+              tenv tofu use $VERSION
+            fi
+          else
+            echo "WARNING: tenv not found, skipping version management"
+          fi
+    
+    # Post-workflow hooks
+    post_workflow_hooks:
+      - run: |
+          echo "=== Post-workflow Hook ==="
+          echo "Workflow completed for $PROJECT_NAME"
+

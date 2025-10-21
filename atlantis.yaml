@@ -1,0 +1,139 @@
+# Atlantis Configuration
+# Defines how Atlantis handles pull requests for this repository
+
+version: 3
+
+automerge: false
+delete_source_branch_on_merge: false
+
+# Parallel execution settings
+parallel_plan: true
+parallel_apply: false
+
+# Project definitions
+projects:
+  # Platform: KIND Cluster
+  - name: platform-kind-cluster
+    dir: stacks/platform/kind-cluster
+    workspace: default
+    terraform_version: v1.8.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.hcl"
+        - "terragrunt.hcl"
+        - "../../../terragrunt.hcl"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: terragrunt
+    
+  # Platform: vcluster
+  - name: platform-vcluster
+    dir: stacks/platform/vcluster
+    workspace: default
+    terraform_version: v1.8.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.hcl"
+        - "terragrunt.hcl"
+        - "../../../terragrunt.hcl"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: terragrunt
+    
+  # Team A
+  - name: teams-team-a
+    dir: stacks/teams/team-a
+    workspace: default
+    terraform_version: v1.8.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.hcl"
+        - "terragrunt.hcl"
+        - "../../../terragrunt.hcl"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: terragrunt
+    
+  # Team B
+  - name: teams-team-b
+    dir: stacks/teams/team-b
+    workspace: default
+    terraform_version: v1.8.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.hcl"
+        - "terragrunt.hcl"
+        - "../../../terragrunt.hcl"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: terragrunt
+
+# Custom workflows
+workflows:
+  terragrunt:
+    plan:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: terragrunt init -upgrade
+        - run: terragrunt plan -input=false -out=$PLANFILE
+    apply:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: terragrunt init -upgrade
+        - run: terragrunt apply -input=false $PLANFILE
+        
+  # Alternative workflow for direct OpenTofu (without terragrunt)
+  opentofu:
+    plan:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: tofu init -upgrade
+        - run: tofu plan -input=false -out=$PLANFILE
+    apply:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: tofu init -upgrade
+        - run: tofu apply -input=false $PLANFILE
+
+# Allowed overrides - what can be customized via PR comments
+allowed_overrides:
+  - workflow
+  - apply_requirements
+
+# Allowed workflows that can be specified
+allowed_workflows:
+  - terragrunt
+  - opentofu
+

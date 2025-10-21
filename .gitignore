@@ -1,0 +1,48 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files
+*.tfvars
+*.tfvars.json
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Terragrunt cache
+**/.terragrunt-cache/*
+
+# KIND kubeconfig
+kind-kubeconfig
+*.kubeconfig
+
+# vcluster kubeconfigs
+vcluster-*.yaml
+
+# Atlantis
+.atlantis
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
