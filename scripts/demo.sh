@@ -70,7 +70,20 @@ echo ""
 echo -e "${GREEN}✓ KIND cluster deployed successfully!${NC}"
 echo ""
 echo "Verifying cluster..."
-export KUBECONFIG="$(pwd)/kind-kubeconfig"
+
+# Set absolute path to kubeconfig
+KUBECONFIG_PATH="$(pwd)/kind-kubeconfig"
+
+# Verify kubeconfig exists
+if [ ! -f "$KUBECONFIG_PATH" ]; then
+    echo -e "${RED}Error: Kubeconfig not found at $KUBECONFIG_PATH${NC}"
+    echo "Attempting to export kubeconfig manually..."
+    kind export kubeconfig --name opentofu-platform-demo --kubeconfig "$KUBECONFIG_PATH"
+fi
+
+export KUBECONFIG="$KUBECONFIG_PATH"
+echo "Using KUBECONFIG: $KUBECONFIG"
+
 run_cmd "kubectl cluster-info"
 run_cmd "kubectl get nodes"
 
@@ -101,7 +114,8 @@ echo ""
 echo -e "${GREEN}✓ Virtual clusters deployed successfully!${NC}"
 echo ""
 echo "Verifying vclusters..."
-export KUBECONFIG="../kind-cluster/kind-kubeconfig"
+export KUBECONFIG="$(cd ../kind-cluster && pwd)/kind-kubeconfig"
+echo "Using KUBECONFIG: $KUBECONFIG"
 run_cmd "kubectl get namespaces | grep vcluster"
 run_cmd "kubectl get pods -n vcluster-team-a"
 run_cmd "kubectl get pods -n vcluster-team-b"
@@ -138,9 +152,15 @@ echo ""
 echo -e "${GREEN}✓ Team A infrastructure deployed successfully!${NC}"
 echo ""
 echo "Verifying Team A resources..."
-export KUBECONFIG="$(pwd)/../../platform/vcluster/vcluster-team-a.kubeconfig"
-run_cmd "kubectl get namespaces"
-run_cmd "kubectl get all -n team-a-apps"
+TEAM_A_KUBECONFIG="$(cd ../../platform/vcluster && pwd)/vcluster-team-a.kubeconfig"
+if [ -f "$TEAM_A_KUBECONFIG" ]; then
+    export KUBECONFIG="$TEAM_A_KUBECONFIG"
+    echo "Using KUBECONFIG: $KUBECONFIG"
+    run_cmd "kubectl get namespaces"
+    run_cmd "kubectl get all -n team-a-apps"
+else
+    echo -e "${YELLOW}Warning: Team A kubeconfig not found at $TEAM_A_KUBECONFIG${NC}"
+fi
 
 pause
 
@@ -170,9 +190,15 @@ echo ""
 echo -e "${GREEN}✓ Team B infrastructure deployed successfully!${NC}"
 echo ""
 echo "Verifying Team B resources..."
-export KUBECONFIG="$(pwd)/../../platform/vcluster/vcluster-team-b.kubeconfig"
-run_cmd "kubectl get namespaces"
-run_cmd "kubectl get all -n team-b-apps"
+TEAM_B_KUBECONFIG="$(cd ../../platform/vcluster && pwd)/vcluster-team-b.kubeconfig"
+if [ -f "$TEAM_B_KUBECONFIG" ]; then
+    export KUBECONFIG="$TEAM_B_KUBECONFIG"
+    echo "Using KUBECONFIG: $KUBECONFIG"
+    run_cmd "kubectl get namespaces"
+    run_cmd "kubectl get all -n team-b-apps"
+else
+    echo -e "${YELLOW}Warning: Team B kubeconfig not found at $TEAM_B_KUBECONFIG${NC}"
+fi
 
 pause
 
@@ -213,17 +239,18 @@ echo "  - Team B: nginx app + Redis"
 echo ""
 echo "Explore the infrastructure:"
 echo ""
+PROJECT_ROOT="$(cd ../../../../ && pwd)"
 echo "  # View host cluster"
-echo "  export KUBECONFIG=stacks/platform/kind-cluster/kind-kubeconfig"
+echo "  export KUBECONFIG=$PROJECT_ROOT/stacks/platform/kind-cluster/kind-kubeconfig"
 echo "  kubectl get nodes"
 echo "  kubectl get pods -A"
 echo ""
 echo "  # View Team A vcluster"
-echo "  export KUBECONFIG=stacks/platform/vcluster/vcluster-team-a.kubeconfig"
+echo "  export KUBECONFIG=$PROJECT_ROOT/stacks/platform/vcluster/vcluster-team-a.kubeconfig"
 echo "  kubectl get pods -n team-a-apps"
 echo ""
 echo "  # View Team B vcluster"
-echo "  export KUBECONFIG=stacks/platform/vcluster/vcluster-team-b.kubeconfig"
+echo "  export KUBECONFIG=$PROJECT_ROOT/stacks/platform/vcluster/vcluster-team-b.kubeconfig"
 echo "  kubectl get pods -n team-b-apps"
 echo ""
 echo "Clean up:"

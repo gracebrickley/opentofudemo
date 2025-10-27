@@ -7,10 +7,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.27"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.12"
-    }
   }
 }
 
@@ -38,12 +34,6 @@ variable "vcluster_kubeconfig_path" {
 # Configure providers to use the vcluster kubeconfig
 provider "kubernetes" {
   config_path = var.vcluster_kubeconfig_path
-}
-
-provider "helm" {
-  kubernetes {
-    config_path = var.vcluster_kubeconfig_path
-  }
 }
 
 # Create application namespace
@@ -167,53 +157,101 @@ resource "kubernetes_service" "sample_app" {
   }
 }
 
-# Deploy Redis cache (using Bitnami chart)
-resource "helm_release" "redis" {
-  name       = "${var.team_name}-redis"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "redis"
-  version    = "18.4.0"
-  namespace  = kubernetes_namespace.app.metadata[0].name
-
-  set {
-    name  = "auth.password"
-    value = "demo-redis-${var.team_name}"
+# Deploy Redis cache using native Kubernetes resources
+resource "kubernetes_deployment" "redis" {
+  metadata {
+    name      = "${var.team_name}-redis"
+    namespace = kubernetes_namespace.app.metadata[0].name
+    labels = {
+      app  = "redis"
+      team = var.team_name
+    }
   }
 
-  set {
-    name  = "master.resources.requests.memory"
-    value = "128Mi"
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app  = "redis"
+        team = var.team_name
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app  = "redis"
+          team = var.team_name
+        }
+      }
+
+      spec {
+        container {
+          name  = "redis"
+          image = "redis:7-alpine"
+
+          command = ["redis-server"]
+          args    = ["--requirepass", "demo-redis-${var.team_name}"]
+
+          port {
+            container_port = 6379
+            name          = "redis"
+          }
+
+          resources {
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "200m"
+              memory = "256Mi"
+            }
+          }
+
+          liveness_probe {
+            tcp_socket {
+              port = 6379
+            }
+            initial_delay_seconds = 30
+            period_seconds        = 10
+          }
+
+          readiness_probe {
+            tcp_socket {
+              port = 6379
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 5
+          }
+        }
+      }
+    }
+  }
+}
+
+# Create service for Redis
+resource "kubernetes_service" "redis" {
+  metadata {
+    name      = "${var.team_name}-redis"
+    namespace = kubernetes_namespace.app.metadata[0].name
   }
 
-  set {
-    name  = "master.resources.requests.cpu"
-    value = "100m"
-  }
+  spec {
+    selector = {
+      app  = "redis"
+      team = var.team_name
+    }
 
-  set {
-    name  = "master.resources.limits.memory"
-    value = "256Mi"
-  }
+    port {
+      port        = 6379
+      target_port = 6379
+      protocol    = "TCP"
+    }
 
-  set {
-    name  = "master.resources.limits.cpu"
-    value = "200m"
+    type = "ClusterIP"
   }
-
-  # Persistence disabled for demo
-  set {
-    name  = "master.persistence.enabled"
-    value = "false"
-  }
-
-  # Disable replica for demo
-  set {
-    name  = "replica.replicaCount"
-    value = "0"
-  }
-
-  wait    = true
-  timeout = 600
 }
 
 # Create a secret with Redis connection info
@@ -224,14 +262,14 @@ resource "kubernetes_secret" "redis_credentials" {
   }
 
   data = {
-    host     = "${var.team_name}-redis-master.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local"
+    host     = "${var.team_name}-redis.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local"
     port     = "6379"
     password = "demo-redis-${var.team_name}"
-    url      = "redis://:demo-redis-${var.team_name}@${var.team_name}-redis-master.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:6379"
+    url      = "redis://:demo-redis-${var.team_name}@${var.team_name}-redis.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:6379"
   }
 
   type = "Opaque"
 
-  depends_on = [helm_release.redis]
+  depends_on = [kubernetes_deployment.redis]
 }
 

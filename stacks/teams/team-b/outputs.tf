@@ -21,7 +21,7 @@ output "sample_app_service" {
 
 output "redis_endpoint" {
   description = "Redis cache endpoint"
-  value       = "${var.team_name}-redis-master.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:6379"
+  value       = "${var.team_name}-redis.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:6379"
 }
 
 output "resources_deployed" {
@@ -30,7 +30,8 @@ output "resources_deployed" {
     "namespace: ${kubernetes_namespace.app.metadata[0].name}",
     "deployment: ${kubernetes_deployment.sample_app.metadata[0].name}",
     "service: ${kubernetes_service.sample_app.metadata[0].name}",
-    "redis: ${helm_release.redis.name}",
+    "redis-deployment: ${kubernetes_deployment.redis.metadata[0].name}",
+    "redis-service: ${kubernetes_service.redis.metadata[0].name}",
     "secret: ${kubernetes_secret.redis_credentials.metadata[0].name}"
   ]
 }

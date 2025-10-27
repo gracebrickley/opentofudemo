@@ -21,7 +21,7 @@ output "sample_app_service" {
 
 output "postgres_endpoint" {
   description = "PostgreSQL database endpoint"
-  value       = "${var.team_name}-postgres-postgresql.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:5432"
+  value       = "${var.team_name}-postgres.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:5432"
 }
 
 output "database_name" {
@@ -35,7 +35,8 @@ output "resources_deployed" {
     "namespace: ${kubernetes_namespace.app.metadata[0].name}",
     "deployment: ${kubernetes_deployment.sample_app.metadata[0].name}",
     "service: ${kubernetes_service.sample_app.metadata[0].name}",
-    "postgres: ${helm_release.postgres.name}",
+    "postgres-deployment: ${kubernetes_deployment.postgres.metadata[0].name}",
+    "postgres-service: ${kubernetes_service.postgres.metadata[0].name}",
     "secret: ${kubernetes_secret.db_credentials.metadata[0].name}"
   ]
 }

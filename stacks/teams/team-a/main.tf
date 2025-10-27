@@ -7,10 +7,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.27"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.12"
-    }
   }
 }
 
@@ -38,12 +34,6 @@ variable "vcluster_kubeconfig_path" {
 # Configure providers to use the vcluster kubeconfig
 provider "kubernetes" {
   config_path = var.vcluster_kubeconfig_path
-}
-
-provider "helm" {
-  kubernetes {
-    config_path = var.vcluster_kubeconfig_path
-  }
 }
 
 # Create application namespace
@@ -167,57 +157,113 @@ resource "kubernetes_service" "sample_app" {
   }
 }
 
-# Deploy PostgreSQL database (using Bitnami chart)
-resource "helm_release" "postgres" {
-  name       = "${var.team_name}-postgres"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "postgresql"
-  version    = "13.2.24"
-  namespace  = kubernetes_namespace.app.metadata[0].name
-
-  set {
-    name  = "auth.username"
-    value = var.team_name
+# Deploy PostgreSQL database using native Kubernetes resources
+resource "kubernetes_deployment" "postgres" {
+  metadata {
+    name      = "${var.team_name}-postgres"
+    namespace = kubernetes_namespace.app.metadata[0].name
+    labels = {
+      app  = "postgres"
+      team = var.team_name
+    }
   }
 
-  set {
-    name  = "auth.password"
-    value = "demo-password-${var.team_name}"
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app  = "postgres"
+        team = var.team_name
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app  = "postgres"
+          team = var.team_name
+        }
+      }
+
+      spec {
+        container {
+          name  = "postgres"
+          image = "postgres:15-alpine"
+
+          env {
+            name  = "POSTGRES_USER"
+            value = var.team_name
+          }
+
+          env {
+            name  = "POSTGRES_PASSWORD"
+            value = "demo-password-${var.team_name}"
+          }
+
+          env {
+            name  = "POSTGRES_DB"
+            value = "${var.team_name}_db"
+          }
+
+          port {
+            container_port = 5432
+            name          = "postgres"
+          }
+
+          resources {
+            requests = {
+              cpu    = "250m"
+              memory = "256Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "512Mi"
+            }
+          }
+
+          liveness_probe {
+            exec {
+              command = ["pg_isready", "-U", var.team_name]
+            }
+            initial_delay_seconds = 30
+            period_seconds        = 10
+          }
+
+          readiness_probe {
+            exec {
+              command = ["pg_isready", "-U", var.team_name]
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 5
+          }
+        }
+      }
+    }
+  }
+}
+
+# Create service for PostgreSQL
+resource "kubernetes_service" "postgres" {
+  metadata {
+    name      = "${var.team_name}-postgres"
+    namespace = kubernetes_namespace.app.metadata[0].name
   }
 
-  set {
-    name  = "auth.database"
-    value = "${var.team_name}_db"
-  }
+  spec {
+    selector = {
+      app  = "postgres"
+      team = var.team_name
+    }
 
-  set {
-    name  = "primary.resources.requests.memory"
-    value = "256Mi"
-  }
+    port {
+      port        = 5432
+      target_port = 5432
+      protocol    = "TCP"
+    }
 
-  set {
-    name  = "primary.resources.requests.cpu"
-    value = "250m"
+    type = "ClusterIP"
   }
-
-  set {
-    name  = "primary.resources.limits.memory"
-    value = "512Mi"
-  }
-
-  set {
-    name  = "primary.resources.limits.cpu"
-    value = "500m"
-  }
-
-  # Persistence disabled for demo
-  set {
-    name  = "primary.persistence.enabled"
-    value = "false"
-  }
-
-  wait    = true
-  timeout = 600
 }
 
 # Create a secret with database connection info
@@ -228,16 +274,16 @@ resource "kubernetes_secret" "db_credentials" {
   }
 
   data = {
-    host     = "${var.team_name}-postgres-postgresql.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local"
+    host     = "${var.team_name}-postgres.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local"
     port     = "5432"
     database = "${var.team_name}_db"
     username = var.team_name
     password = "demo-password-${var.team_name}"
-    url      = "postgresql://${var.team_name}:demo-password-${var.team_name}@${var.team_name}-postgres-postgresql.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:5432/${var.team_name}_db"
+    url      = "postgresql://${var.team_name}:demo-password-${var.team_name}@${var.team_name}-postgres.${kubernetes_namespace.app.metadata[0].name}.svc.cluster.local:5432/${var.team_name}_db"
   }
 
   type = "Opaque"
 
-  depends_on = [helm_release.postgres]
+  depends_on = [kubernetes_deployment.postgres]
 }
 

@@ -7,7 +7,7 @@ output "vclusters" {
     for k, v in var.vclusters : k => {
       name              = v.release_name
       namespace         = v.namespace
-      kubeconfig_path   = abspath("${path.module}/vcluster-${k}.kubeconfig")
+      kubeconfig_path   = abspath("${path.root}/../../vcluster/vcluster-${k}.kubeconfig")
       status           = "ready"
     }
   }
@@ -25,9 +25,9 @@ output "vcluster_ready" {
 }
 
 output "team_kubeconfig_paths" {
-  description = "Paths to team-specific kubeconfig files"
+  description = "Paths to team-specific kubeconfig files (relative to repo root)"
   value = {
-    for k, v in var.vclusters : k => abspath("${path.module}/vcluster-${k}.kubeconfig")
+    for k, v in var.vclusters : k => "stacks/platform/vcluster/vcluster-${k}.kubeconfig"
   }
 }
 

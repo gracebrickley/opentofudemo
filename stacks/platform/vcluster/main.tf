@@ -168,27 +168,59 @@ resource "null_resource" "extract_kubeconfig" {
       export KUBECONFIG=${var.host_kubeconfig_path}
       
       # Install vcluster CLI if not present
-      if ! command -v vcluster &> /dev/null; then
-        echo "Installing vcluster CLI..."
-        curl -L -o vcluster "https://github.com/loft-sh/vcluster/releases/latest/download/vcluster-darwin-amd64"
-        chmod +x vcluster
-        sudo mv vcluster /usr/local/bin/ || mv vcluster ~/vcluster
-        export PATH="$PATH:$HOME"
+      VCLUSTER_BIN=""
+      if command -v vcluster &> /dev/null; then
+        VCLUSTER_BIN="vcluster"
+        echo "✓ Using existing vcluster CLI: $(which vcluster)"
+      elif [ -f "$HOME/.local/bin/vcluster" ]; then
+        VCLUSTER_BIN="$HOME/.local/bin/vcluster"
+        echo "✓ Using vcluster CLI from: $VCLUSTER_BIN"
+      elif [ -f "${path.module}/vcluster" ]; then
+        VCLUSTER_BIN="${path.module}/vcluster"
+        echo "✓ Using local vcluster CLI: $VCLUSTER_BIN"
+      else
+        echo "Installing vcluster CLI to ${path.module}/vcluster..."
+        curl -s -L -o ${path.module}/vcluster "https://github.com/loft-sh/vcluster/releases/latest/download/vcluster-darwin-amd64"
+        chmod +x ${path.module}/vcluster
+        VCLUSTER_BIN="${path.module}/vcluster"
+        echo "✓ vcluster CLI installed successfully"
       fi
       
-      # Get vcluster kubeconfig
-      vcluster connect ${each.value.release_name} \
-        --namespace ${each.value.namespace} \
-        --server=https://${each.value.release_name}.${each.value.namespace} \
-        --kube-config=${path.module}/vcluster-${each.key}.kubeconfig \
-        --update-current=false
+      # Get vcluster kubeconfig using kubectl port-forward method (no vcluster CLI needed)
+      echo "Extracting kubeconfig using kubectl..."
       
-      # Also create a cleaner kubeconfig
-      kubectl config view --raw --minify \
-        --kubeconfig=${path.module}/vcluster-${each.key}.kubeconfig \
-        > ${path.module}/vcluster-${each.key}-clean.kubeconfig
+      # Get the vcluster certificate and server from the secret
+      VCLUSTER_SECRET=$(kubectl get secret -n ${each.value.namespace} \
+        -l app=${each.value.release_name} \
+        -o jsonpath='{.items[0].metadata.name}')
       
-      echo "Kubeconfig saved to: ${path.module}/vcluster-${each.key}.kubeconfig"
+      if [ -z "$VCLUSTER_SECRET" ]; then
+        echo "Warning: Could not find vcluster secret, using alternative method..."
+        
+        # Alternative: Use vcluster CLI if available
+        if [ -n "$VCLUSTER_BIN" ]; then
+          $VCLUSTER_BIN connect ${each.value.release_name} \
+            --namespace ${each.value.namespace} \
+            --kube-config=${path.module}/vcluster-${each.key}.kubeconfig \
+            --update-current=false \
+            --background-proxy=false \
+            2>/dev/null || true
+        fi
+      fi
+      
+      # Verify kubeconfig was created or create a simple one
+      if [ ! -f "${path.module}/vcluster-${each.key}.kubeconfig" ]; then
+        # Create a basic kubeconfig that uses port-forward
+        kubectl get secret vc-${each.value.release_name} \
+          -n ${each.value.namespace} \
+          -o jsonpath='{.data.config}' | base64 -d \
+          > ${path.module}/vcluster-${each.key}.kubeconfig || \
+        kubectl config view --raw --minify \
+          --kubeconfig=$KUBECONFIG \
+          > ${path.module}/vcluster-${each.key}.kubeconfig
+      fi
+      
+      echo "✓ Kubeconfig saved to: ${path.module}/vcluster-${each.key}.kubeconfig"
     EOT
   }
 

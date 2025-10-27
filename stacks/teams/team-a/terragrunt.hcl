@@ -22,7 +22,16 @@ dependency "vcluster" {
 # Stack-specific inputs
 inputs = {
   team_name                = "team-a"
-  vcluster_kubeconfig_path = dependency.vcluster.outputs.team_kubeconfig_paths["team-a"]
+  # Construct absolute path from relative path output
+  vcluster_kubeconfig_path = "${get_repo_root()}/${dependency.vcluster.outputs.team_kubeconfig_paths["team-a"]}"
+}
+
+# Hook to ensure kubeconfig files are available in cache directory
+terraform {
+  before_hook "copy_kubeconfigs" {
+    commands = ["plan", "apply", "destroy", "refresh"]
+    execute  = ["bash", "-c", "mkdir -p ${get_parent_terragrunt_dir()}/../../platform/vcluster && cp -f ${get_repo_root()}/stacks/platform/vcluster/vcluster-*.kubeconfig ${get_parent_terragrunt_dir()}/../../platform/vcluster/ 2>/dev/null || true"]
+  }
 }
 
 # Generate provider configuration

@@ -109,6 +109,7 @@ rm -f stacks/platform/kind-cluster/kind-kubeconfig
 rm -f stacks/platform/kind-cluster/kind-config.yaml
 rm -f stacks/platform/vcluster/vcluster-*.kubeconfig
 rm -f stacks/platform/vcluster/vcluster-*-clean.kubeconfig
+rm -f stacks/platform/vcluster/vcluster  # Remove local vcluster CLI binary
 
 # Remove terraform state files
 echo "Removing local state files..."

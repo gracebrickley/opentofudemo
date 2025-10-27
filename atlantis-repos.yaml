@@ -1,6 +1,52 @@
 # Atlantis repository configuration
 # This file defines repository-level settings for Atlantis
 
+# Workflow definitions (must be defined at server level when using --repo-config)
+workflows:
+  terragrunt:
+    plan:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: terragrunt init -upgrade
+        - run: terragrunt plan -input=false -out=$PLANFILE
+    apply:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: terragrunt init -upgrade
+        - run: terragrunt apply -input=false $PLANFILE
+        
+  opentofu:
+    plan:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: tofu init -upgrade
+        - run: tofu plan -input=false -out=$PLANFILE
+    apply:
+      steps:
+        - run: |
+            # Set OpenTofu version using tenv
+            if command -v tenv &> /dev/null; then
+              tenv tofu install $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+              tenv tofu use $(cat .tenv.tofu.version 2>/dev/null || echo "1.8.8")
+            fi
+        - run: tofu init -upgrade
+        - run: tofu apply -input=false $PLANFILE
+
 repos:
   - id: /.*/
     

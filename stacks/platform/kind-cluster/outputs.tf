@@ -20,12 +20,19 @@ output "cluster_ca_certificate" {
 output "kubeconfig_path" {
   description = "Path to the kubeconfig file"
   value       = abspath("${path.module}/kind-kubeconfig")
+  depends_on  = [data.local_file.kubeconfig]
+}
+
+output "kubeconfig_content" {
+  description = "Content of the kubeconfig file"
+  value       = data.local_file.kubeconfig.content
+  sensitive   = true
 }
 
 output "cluster_ready" {
   description = "Indicates if cluster is ready"
   value       = true
-  depends_on  = [null_resource.wait_for_cluster]
+  depends_on  = [null_resource.wait_for_cluster, data.local_file.kubeconfig]
 }
 
 output "kubernetes_version" {
