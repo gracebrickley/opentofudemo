@@ -11,7 +11,7 @@ terraform {
 }
 
 variable "project_name" {
-  description = "Project name"
+  description = "Project name part 2"
   type        = string
 }
 
