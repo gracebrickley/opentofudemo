@@ -32,9 +32,17 @@ variable "environment" {
   type        = string
 }
 
-variable "host_kubeconfig_path" {
-  description = "Path to the host cluster kubeconfig"
-  type        = string
+variable "host_cluster_endpoint" {
+  type = string
+}
+variable "host_cluster_ca_cert" {
+  type = string
+}
+variable "host_client_cert" {
+  type = string
+}
+variable "host_client_key" {
+  type = string
 }
 
 variable "vclusters" {
@@ -59,12 +67,20 @@ variable "vclusters" {
 
 # Configure providers to use the host cluster kubeconfig
 provider "kubernetes" {
-  config_path = var.host_kubeconfig_path
+  host = var.host_cluster_endpoint
+
+  client_certificate = var.host_client_cert
+  client_key = var.host_client_key
+  cluster_ca_certificate = var.host_cluster_ca_cert
 }
 
 provider "helm" {
   kubernetes {
-    config_path = var.host_kubeconfig_path
+    host = var.host_cluster_endpoint
+
+    client_certificate = var.host_client_cert
+    client_key = var.host_client_key
+    cluster_ca_certificate = var.host_cluster_ca_cert
   }
 }
 
@@ -126,118 +142,5 @@ resource "helm_release" "vcluster" {
   wait    = true
   timeout = 600
 
-  depends_on = [kubernetes_namespace.vcluster_namespaces]
+  depends_on = [kubernetes_namespace.vcluster_namespaces, kubernetes_service.load_balancer_services]
 }
-
-# Wait for vcluster to be ready
-resource "null_resource" "wait_for_vcluster" {
-  for_each = var.vclusters
-
-  triggers = {
-    vcluster_id = helm_release.vcluster[each.key].id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo "Waiting for vcluster ${each.key} to be ready..."
-      export KUBECONFIG=${var.host_kubeconfig_path}
-      
-      # Wait for statefulset to be ready
-      kubectl rollout status statefulset/${each.value.release_name} \
-        -n ${each.value.namespace} \
-        --timeout=300s
-      
-      echo "vcluster ${each.key} is ready!"
-    EOT
-  }
-
-  depends_on = [helm_release.vcluster]
-}
-
-# Extract kubeconfig for each vcluster
-resource "null_resource" "extract_kubeconfig" {
-  for_each = var.vclusters
-
-  triggers = {
-    vcluster_ready = null_resource.wait_for_vcluster[each.key].id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo "Extracting kubeconfig for vcluster ${each.key}..."
-      export KUBECONFIG=${var.host_kubeconfig_path}
-      
-      # Install vcluster CLI if not present
-      VCLUSTER_BIN=""
-      if command -v vcluster &> /dev/null; then
-        VCLUSTER_BIN="vcluster"
-        echo "✓ Using existing vcluster CLI: $(which vcluster)"
-      elif [ -f "$HOME/.local/bin/vcluster" ]; then
-        VCLUSTER_BIN="$HOME/.local/bin/vcluster"
-        echo "✓ Using vcluster CLI from: $VCLUSTER_BIN"
-      elif [ -f "${path.module}/vcluster" ]; then
-        VCLUSTER_BIN="${path.module}/vcluster"
-        echo "✓ Using local vcluster CLI: $VCLUSTER_BIN"
-      else
-        echo "Installing vcluster CLI to ${path.module}/vcluster..."
-        curl -s -L -o ${path.module}/vcluster "https://github.com/loft-sh/vcluster/releases/latest/download/vcluster-darwin-amd64"
-        chmod +x ${path.module}/vcluster
-        VCLUSTER_BIN="${path.module}/vcluster"
-        echo "✓ vcluster CLI installed successfully"
-      fi
-      
-      # Get vcluster kubeconfig using kubectl port-forward method (no vcluster CLI needed)
-      echo "Extracting kubeconfig using kubectl..."
-      
-      # Get the vcluster certificate and server from the secret
-      VCLUSTER_SECRET=$(kubectl get secret -n ${each.value.namespace} \
-        -l app=${each.value.release_name} \
-        -o jsonpath='{.items[0].metadata.name}')
-      
-      if [ -z "$VCLUSTER_SECRET" ]; then
-        echo "Warning: Could not find vcluster secret, using alternative method..."
-        
-        # Alternative: Use vcluster CLI if available
-        if [ -n "$VCLUSTER_BIN" ]; then
-          $VCLUSTER_BIN connect ${each.value.release_name} \
-            --namespace ${each.value.namespace} \
-            --kube-config=${path.module}/vcluster-${each.key}.kubeconfig \
-            --update-current=false \
-            --background-proxy=false \
-            2>/dev/null || true
-        fi
-      fi
-      
-      # Verify kubeconfig was created or create a simple one
-      if [ ! -f "${path.module}/vcluster-${each.key}.kubeconfig" ]; then
-        # Create a basic kubeconfig that uses port-forward
-        kubectl get secret vc-${each.value.release_name} \
-          -n ${each.value.namespace} \
-          -o jsonpath='{.data.config}' | base64 -d \
-          > ${path.module}/vcluster-${each.key}.kubeconfig || \
-        kubectl config view --raw --minify \
-          --kubeconfig=$KUBECONFIG \
-          > ${path.module}/vcluster-${each.key}.kubeconfig
-      fi
-      
-      echo "✓ Kubeconfig saved to: ${path.module}/vcluster-${each.key}.kubeconfig"
-    EOT
-  }
-
-  depends_on = [null_resource.wait_for_vcluster]
-}
-
-# Create marker files for kubeconfigs
-resource "local_file" "vcluster_kubeconfig_marker" {
-  for_each = var.vclusters
-
-  filename = "${path.module}/vcluster-${each.key}.kubeconfig"
-  content  = "# Kubeconfig will be generated by vcluster CLI"
-
-  lifecycle {
-    ignore_changes = [content]
-  }
-
-  depends_on = [null_resource.extract_kubeconfig]
-}
-

@@ -18,12 +18,6 @@ output "vcluster_namespaces" {
   value       = { for k, v in kubernetes_namespace.vcluster_namespaces : k => v.metadata[0].name }
 }
 
-output "vcluster_ready" {
-  description = "Indicates if all vclusters are ready"
-  value       = true
-  depends_on  = [null_resource.wait_for_vcluster]
-}
-
 output "team_kubeconfig_paths" {
   description = "Paths to team-specific kubeconfig files (relative to repo root)"
   value = {

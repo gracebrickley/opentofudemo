@@ -25,8 +25,11 @@ locals {
 
 # Stack-specific inputs
 inputs = {
-  host_kubeconfig_path = dependency.kind_cluster.outputs.kubeconfig_path
-  
+  host_cluster_endpoint = dependency.kind_cluster.outputs.cluster_endpoint
+  host_cluster_ca_cert = dependency.kind_cluster.outputs.cluster_ca_certificate
+  host_client_cert = dependency.kind_cluster.outputs.client_certificate
+  host_client_key = dependency.kind_cluster.outputs.client_key
+
   vclusters = {
     team-a = {
       namespace    = "vcluster-team-a"
