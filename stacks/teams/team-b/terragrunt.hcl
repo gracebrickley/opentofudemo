@@ -26,3 +26,48 @@ inputs = {
   host_client_key = dependency.kind_cluster.outputs.client_key
   team_name                = "team-b"
 }
+
+generate "required_variables" {
+  path = "required_variables.tf"
+  if_exists = "overwrite"
+  contents = <<EOF
+variable "host_cluster_endpoint" {
+  type = string
+}
+
+variable "host_cluster_ca_cert" {
+  type = string
+}
+
+variable "host_client_cert" {
+  type = string
+}
+
+variable "host_client_key" {
+  type = string
+}
+EOF
+}
+
+generate "providers" {
+  path = "providers.tf"
+  if_exists = "overwrite"
+  contents = <<EOF
+terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.27"
+    }
+  }
+}
+
+provider "kubernetes" {
+  host = var.host_cluster_endpoint
+  client_certificate = var.host_client_cert
+  client_key = var.host_client_key
+  cluster_ca_certificate = var.host_cluster_ca_cert
+}
+
+EOF
+}

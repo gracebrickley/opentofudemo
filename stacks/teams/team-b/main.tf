@@ -1,15 +1,6 @@
 # Team B Stack - Layer 3: Application Infrastructure
 # This stack deploys team-specific resources into their virtual cluster
 
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.27"
-    }
-  }
-}
-
 variable "project_name" {
   description = "Project name"
   type        = string
@@ -24,30 +15,6 @@ variable "team_name" {
   description = "Team name"
   type        = string
   default     = "team-b"
-}
-
-variable "host_cluster_endpoint" {
-  type = string
-}
-
-variable "host_cluster_ca_cert" {
-  type = string
-}
-
-variable "host_client_cert" {
-  type = string
-}
-
-variable "host_client_key" {
-  type = string
-}
-
-# Configure providers to use the vcluster kubeconfig
-provider "kubernetes" {
-  host = var.host_cluster_endpoint
-  client_certificate = var.host_client_cert
-  client_key = var.host_client_key
-  cluster_ca_certificate = var.host_cluster_ca_cert
 }
 
 # Create application namespace
