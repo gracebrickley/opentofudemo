@@ -26,14 +26,28 @@ variable "team_name" {
   default     = "team-a"
 }
 
-variable "vcluster_kubeconfig_path" {
-  description = "Path to the vcluster kubeconfig"
-  type        = string
+variable "host_cluster_endpoint" {
+  type = string
+}
+
+variable "host_cluster_ca_cert" {
+  type = string
+}
+
+variable "host_client_cert" {
+  type = string
+}
+
+variable "host_client_key" {
+  type = string
 }
 
 # Configure providers to use the vcluster kubeconfig
 provider "kubernetes" {
-  config_path = var.vcluster_kubeconfig_path
+  host = var.host_cluster_endpoint
+  client_certificate = var.host_client_cert
+  client_key = var.host_client_key
+  cluster_ca_certificate = var.host_cluster_ca_cert
 }
 
 # Create application namespace

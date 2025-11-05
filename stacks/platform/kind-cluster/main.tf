@@ -32,10 +32,6 @@ variable "environment" {
   type        = string
 }
 
-variable "working_dir" {
-  type = string
-}
-
 variable "cluster_name" {
   description = "Name of the KIND cluster"
   type        = string

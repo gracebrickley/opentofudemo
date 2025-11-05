@@ -16,17 +16,17 @@ inputs = {
 }
 
 # Generate provider configuration for this stack
-generate "provider" {
-  path      = "provider_generated.tf"
-  if_exists = "overwrite"
-  contents  = <<EOF
-# Local provider for file operations
-provider "null" {}
-
-resource "local_file" "dummy" {
-  filename = "$${path.module}/.terraform-initialized"
-  content  = "initialized"
-}
-EOF
-}
+# generate "provider" {
+#   path      = "provider_generated.tf"
+#   if_exists = "overwrite"
+#   contents  = <<EOF
+# # Local provider for file operations
+# provider "null" {}
+#
+# resource "local_file" "dummy" {
+#   filename = "$${path.module}/.terraform-initialized"
+#   content  = "initialized"
+# }
+# EOF
+# }
 
