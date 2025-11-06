@@ -269,4 +269,4 @@ resource "kubernetes_secret" "db_credentials" {
 }
 
 # Dummy resource to force re-creation on config changes to test Atlantis
-resource "null_resource" "example1" {}
+resource "null_resource" "example" {}
