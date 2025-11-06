@@ -128,12 +128,12 @@ workflows:
         - run: tofu apply -input=false $PLANFILE
 
 # Allowed overrides - what can be customized via PR comments
-allowed_overrides:
-  - workflow
-  - apply_requirements
+# allowed_overrides:
+ # - workflow
+ # - apply_requirements
 
 # Allowed workflows that can be specified
-allowed_workflows:
-  - terragrunt
-  - opentofu
+# allowed_workflows:
+ # - terragrunt
+ # - opentofu
 
