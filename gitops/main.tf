@@ -18,13 +18,13 @@ locals {
   s3_bucket_names = [
     "tofu-primary-data",
     "tofu-backups",
-    "tofu-logs",
+    "opentofu-day-2025-logs",
     "tofu-artifacts",
     "tofu-temp-storage"
   ]
 }
 
-resource "aws_s3_bucket" "terraform_state" {
+resource "aws_s3_bucket" "tofu_buckets" {
   for_each = toset(local.s3_bucket_names)
   bucket = each.value
   tags = {
