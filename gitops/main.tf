@@ -18,15 +18,15 @@ provider "aws" {
 
 locals {
   s3_bucket_names = [
-    "tofu-primary-data",
-    "tofu-backups",
+    "opentofu-day-2025-primary-data",
+    "opentofu-day-2025-backups",
     "opentofu-day-2025-logs",
-    "tofu-artifacts",
-    "tofu-temp-storage"
+    "opentofu-day-2025-artifacts",
+    "opentofu-day-2025-temp-storage"
   ]
 }
 
-resource "aws_s3_bucket" "tofu_buckets" {
+resource "aws_s3_bucket" "opentofu-day-2025_buckets" {
   for_each = toset(local.s3_bucket_names)
   bucket = each.value
   tags = {
