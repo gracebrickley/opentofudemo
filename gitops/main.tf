@@ -26,7 +26,7 @@ locals {
   ]
 }
 
-resource "aws_s3_bucket" "opentofu-day-2025_buckets_2" {
+resource "aws_s3_bucket" "opentofu-day-2025_buckets" {
   for_each = toset(local.s3_bucket_names)
   bucket = each.value
   tags = {
