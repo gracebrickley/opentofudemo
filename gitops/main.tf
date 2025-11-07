@@ -5,8 +5,10 @@ terraform {
       version = "~> 6.0"
     }
   }
-  backend "local" {
-    path = "s3.tfstate"
+  backend "s3" {
+    bucket = "opentofu-day-2025-statefile"
+    key = "terraform.tfstate"
+    region = "us-west-2"
   }
 }
 
