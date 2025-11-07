@@ -7,38 +7,5 @@ projects:
     when_modified:
     - '*.hcl'
     - '*.tf*'
-    - ../../../root.hcl
-    - ../../../*.tf*
-  dir: stacks/platform/kind-cluster
-  workflow: terragrunt
-- autoplan:
-    enabled: true
-    when_modified:
-    - '*.hcl'
-    - '*.tf*'
-    - ../../../root.hcl
-    - ../../../*.tf*
-    - ../../platform/kind-cluster/terragrunt.hcl
-    - ../../platform/kind-cluster/*.tf*
-  dir: stacks/teams/team-a
-  workflow: terragrunt
-- autoplan:
-    enabled: true
-    when_modified:
-    - '*.hcl'
-    - '*.tf*'
-    - ../../../root.hcl
-    - ../../../*.tf*
-    - ../../platform/kind-cluster/terragrunt.hcl
-    - ../../platform/kind-cluster/*.tf*
-  dir: stacks/teams/team-b
-  workflow: terragrunt
+  dir: gitops
 version: 3
-workflows:
-  terragrunt:
-    plan:
-      steps:
-      - run: terragrunt plan -out=$PLANFILE
-    apply:
-      steps:
-      - run: terragrunt apply $PLANFILE --terragrunt-non-interactive -auto-approve
