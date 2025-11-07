@@ -267,3 +267,6 @@ resource "kubernetes_secret" "db_credentials" {
 
   depends_on = [kubernetes_deployment.postgres]
 }
+
+# Dummy resource to force re-creation on config changes to test Atlantis
+resource "null_resource" "example" {}
