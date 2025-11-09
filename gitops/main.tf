@@ -19,7 +19,7 @@ provider "aws" {
 locals {
   s3_bucket_names = [
     "opentofu-day-2025-primary-data",
-    "opentofu-day-2025-backups",
+    "opentofu-day-2025-backups2",
     "opentofu-day-2025-logs",
     "opentofu-day-2025-artifacts",
     "opentofu-day-2025-temp-storage"
